@@ -1,0 +1,7 @@
+Django==2.0
+django-germanium==2.0.5
+coverage==4.5.1
+selenium==3.11.0
+six==1.11.0
+freezegun==0.3.10
+-e ../
