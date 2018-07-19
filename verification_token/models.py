@@ -3,10 +3,14 @@ import string
 from datetime import timedelta
 
 from django.db import models
+from django.db.utils import IntegrityError
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.module_loading import import_string
+
+from .config import settings
 
 
 class VerificationTokenManager(models.Manager):
@@ -14,19 +18,24 @@ class VerificationTokenManager(models.Manager):
     def deactivate(self, obj, slug=None, key=None):
         self.filter_active_tokens(obj, slug, key).update(is_active=False)
 
-    def deactivate_and_create(self, obj, slug=None, deactivate_old_tokens=True, expiration_in_minutes=24 * 60):
+    def deactivate_and_create(self, obj, slug=None, deactivate_old_tokens=True, expiration_in_minutes=None,
+                              key_generator_kwargs=None):
+        expiration_in_minutes = settings.DEFAULT_EXPIRATION if expiration_in_minutes is None else expiration_in_minutes
+
+        key_generator_kwargs = {} if key_generator_kwargs is None else key_generator_kwargs
         if deactivate_old_tokens:
             self.deactivate(obj, slug)
         return self.create(
             content_type=ContentType.objects.get_for_model(obj.__class__),
             object_id=obj.pk,
             slug=slug,
-            expiration_in_minutes=expiration_in_minutes
+            expiration_in_minutes=expiration_in_minutes,
+            key=self.model.generate_key(**key_generator_kwargs)
         )
 
-    def exists_valid(self, obj, verification_key, slug=None):
+    def exists_valid(self, obj, key, slug=None):
         for token in self.filter_active_tokens(obj, slug):
-            if token.check_key(verification_key):
+            if token.check_key(key):
                 return True
         return False
 
@@ -56,8 +65,22 @@ class VerificationToken(models.Model):
 
     objects = VerificationTokenManager()
 
-    def generate_key(self, length=20, allowed_chars=string.ascii_uppercase + string.digits):
-        return get_random_string(length, allowed_chars)
+    @classmethod
+    def generate_key(cls, generator=None, *args, **kwargs):
+        """
+        Generate random unique token key.
+        """
+        generator = settings.DEFAULT_KEY_GENERATOR if generator is None else generator
+        generator_func = import_string(generator) if isinstance(generator, str) else generator
+
+        key = generator_func(*args, **kwargs)
+        try_generator_iterations = 1
+        while cls.objects.filter(key=key).exists():
+            if try_generator_iterations >= settings.MAX_RANDOM_KEY_ITERATIONS:
+                raise IntegrityError('Could not produce unique key for verification token')
+            try_generator_iterations += 1
+            key = generator_func(*args, **kwargs)
+        return key
 
     @property
     def is_valid(self):
@@ -66,11 +89,11 @@ class VerificationToken(models.Model):
             timezone.now() <= self.created_at + timedelta(minutes=self.expiration_in_minutes)
         )
 
-    def check_key(self, verification_key):
+    def check_key(self, key):
         """
-        Returns True iff verification key is correct and not expired
+        Returns True if verification key is correct and not expired
         """
-        return self.is_valid and self.key == verification_key
+        return self.is_valid and self.key == key
 
     def save(self, *args, **kwargs):
         if not self.key:
