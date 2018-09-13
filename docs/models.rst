@@ -39,6 +39,10 @@ Models
 
     ``BooleanField`` contains if token is active.
 
+  .. attribute:: extra_data
+
+    ``TextField``, contains arbitrary data related to the token in JSON format. Use methods ``get_extra_data()`` and ``set_extra_data()`` to access it.
+
   .. method:: generate_key(generator=None, *args, **kwargs)
 
     Class method for unique token key generation. You can send generator and its args and kwargs. If generator is not set default generator is used (``VERIFICATION_TOKEN_DEFAULT_KEY_GENERATOR``).
@@ -46,6 +50,14 @@ Models
   .. method:: is_valid()
 
     Method which checks whether token is active and is not expired.
+
+  .. method:: set_extra_data(extra_data)
+
+    Converts `extra_data` (JSON serializable object) to JSON and sets it to the token.
+
+  .. method:: get_extra_data()
+
+    Returns deserialized `extra_data`.
 
 Managers
 ========
@@ -58,7 +70,7 @@ Managers
 
     Deactivates all tokens related to model. If slug or key is send only tokens with the slug and key are deactivated.
 
-  .. method:: deactivate_and_create(obj, obj, slug=None, deactivate_old_tokens=True, expiration_in_minutes=None, key_generator_kwargs=None)
+  .. method:: deactivate_and_create(obj, obj, slug=None, extra_data=None, deactivate_old_tokens=True, expiration_in_minutes=None, key_generator_kwargs=None)
 
     Method deactivates old tokens and generate new one. Deactivation can be disabled via parameter ``deactivate_old_tokens``. Parameter ``key_generator_kwargs`` can be used for changing key generator kwargs (kwargs of class method ``auth_token.models.VerificationToken.generate_key``).
 

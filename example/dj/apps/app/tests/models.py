@@ -130,3 +130,17 @@ class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
                 'generator': generator_with_counter, 'counter': counter
             })
         assert_equal(counter.iterations, 12)
+
+    @data_provider('create_user')
+    def test_verification_token_should_store_extra_data(self, user):
+        EXTRA_DATA_1 = {'a': 123}
+        EXTRA_DATA_2 = {'b': 456}
+
+        token = VerificationToken.objects.deactivate_and_create(user, extra_data=EXTRA_DATA_1)
+        token.refresh_from_db()
+        assert_equal(token.get_extra_data(), EXTRA_DATA_1)
+
+        token.set_extra_data(EXTRA_DATA_2)
+        token.save()
+        token.refresh_from_db()
+        assert_equal(token.get_extra_data(), EXTRA_DATA_2)

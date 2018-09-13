@@ -1,3 +1,4 @@
+import json
 import string
 
 from datetime import timedelta
@@ -18,20 +19,26 @@ class VerificationTokenManager(models.Manager):
     def deactivate(self, obj, slug=None, key=None):
         self.filter_active_tokens(obj, slug, key).update(is_active=False)
 
-    def deactivate_and_create(self, obj, slug=None, deactivate_old_tokens=True, expiration_in_minutes=None,
+    def deactivate_and_create(self, obj, slug=None, extra_data=None, deactivate_old_tokens=True, expiration_in_minutes=None,
                               key_generator_kwargs=None):
         expiration_in_minutes = settings.DEFAULT_EXPIRATION if expiration_in_minutes is None else expiration_in_minutes
 
         key_generator_kwargs = {} if key_generator_kwargs is None else key_generator_kwargs
         if deactivate_old_tokens:
             self.deactivate(obj, slug)
-        return self.create(
+
+        token = self.model(
             content_type=ContentType.objects.get_for_model(obj.__class__),
             object_id=obj.pk,
             slug=slug,
             expiration_in_minutes=expiration_in_minutes,
-            key=self.model.generate_key(**key_generator_kwargs)
+            key=self.model.generate_key(**key_generator_kwargs),
         )
+        if extra_data:
+            token.set_extra_data(extra_data)
+
+        token.save()
+        return token
 
     def exists_valid(self, obj, key, slug=None):
         for token in self.filter_active_tokens(obj, slug):
@@ -62,6 +69,7 @@ class VerificationToken(models.Model):
     expiration_in_minutes = models.PositiveIntegerField(null=True, blank=True, default=None)
     slug = models.SlugField(null=True, blank=True)
     is_active = models.BooleanField(null=False, blank=False, default=True)
+    extra_data = models.TextField(null=True, blank=True)
 
     objects = VerificationTokenManager()
 
@@ -94,6 +102,12 @@ class VerificationToken(models.Model):
         Returns True if verification key is correct and not expired
         """
         return self.is_valid and self.key == key
+
+    def set_extra_data(self, extra_data):
+        self.extra_data = json.dumps(extra_data)
+
+    def get_extra_data(self):
+        return json.loads(self.extra_data)
 
     def save(self, *args, **kwargs):
         if not self.key:
