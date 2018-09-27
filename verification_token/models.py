@@ -107,7 +107,7 @@ class VerificationToken(models.Model):
         self.extra_data = json.dumps(extra_data)
 
     def get_extra_data(self):
-        return json.loads(self.extra_data)
+        return json.loads(self.extra_data) if self.extra_data is not None else None
 
     def save(self, *args, **kwargs):
         if not self.key:

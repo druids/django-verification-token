@@ -144,3 +144,7 @@ class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
         token.save()
         token.refresh_from_db()
         assert_equal(token.get_extra_data(), EXTRA_DATA_2)
+
+        token.extra_data = None
+        token.save()
+        assert_equal(token.get_extra_data(), None)
