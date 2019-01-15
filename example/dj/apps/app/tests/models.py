@@ -37,6 +37,10 @@ def generator_with_counter(counter):
     counter.add()
     return 'not_unique'
 
+def assert_token_is_same_active_and_valid(original_token, token_to_compare):
+    assert_equal(original_token, token_to_compare)
+    assert_true(token_to_compare.is_valid)
+    assert_true(token_to_compare.is_active)
 
 class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
 
@@ -148,3 +152,27 @@ class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
         token.extra_data = None
         token.save()
         assert_equal(token.get_extra_data(), None)
+
+    @data_provider('create_user')
+    def test_verification_token_expiration_should_be_nullable(self, user):
+        token = VerificationToken.objects.deactivate_and_create(user, expiration_in_minutes=None)
+        assert_equal(token.expiration_in_minutes, None)
+
+    @data_provider('create_user')
+    def test_verification_token_does_not_expire_without_expiration_value(self, user):
+        token = VerificationToken.objects.deactivate_and_create(user, expiration_in_minutes=None)
+        with freeze_time(timezone.now() + timedelta(days=30*365), tick=True):
+            assert_true(token.is_valid)
+            assert_true(token.is_active)
+
+    @data_provider('create_user')
+    def test_verification_token_get_active_or_create_should_return_existing_active_and_valid_token(self, user):
+        created_token = VerificationToken.objects.deactivate_and_create(user, expiration_in_minutes=10)
+        
+        with freeze_time(timezone.now(), tick=True):
+            obtained_token = VerificationToken.objects.get_active_or_create(user)
+            assert_token_is_same_active_and_valid(created_token, obtained_token)
+
+        with freeze_time(timezone.now() + timedelta(minutes=5), tick=True):
+            obtained_token = VerificationToken.objects.get_active_or_create(user)
+            assert_token_is_same_active_and_valid(created_token, obtained_token)

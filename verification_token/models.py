@@ -19,13 +19,26 @@ class VerificationTokenManager(models.Manager):
     def deactivate(self, obj, slug=None, key=None):
         self.filter_active_tokens(obj, slug, key).update(is_active=False)
 
-    def deactivate_and_create(self, obj, slug=None, extra_data=None, deactivate_old_tokens=True, expiration_in_minutes=None,
-                              key_generator_kwargs=None):
-        expiration_in_minutes = settings.DEFAULT_EXPIRATION if expiration_in_minutes is None else expiration_in_minutes
-
-        key_generator_kwargs = {} if key_generator_kwargs is None else key_generator_kwargs
+    def deactivate_and_create(self, obj, slug=None, extra_data=None, deactivate_old_tokens=True,
+                              key_generator_kwargs=None, **kwargs):
         if deactivate_old_tokens:
             self.deactivate(obj, slug)
+
+        return self._create(obj, slug=slug, extra_data=extra_data, key_generator_kwargs=key_generator_kwargs, **kwargs)
+
+    def get_active_or_create(self, obj, slug=None, extra_data=None, key=None, key_generator_kwargs=None, **kwargs):
+        token = self.filter_active_tokens(obj, slug, key).order_by('created_at').last()
+
+        if token and token.is_valid:
+            return token
+        else:
+            return self._create(obj, slug=slug, extra_data=extra_data, key_generator_kwargs=key_generator_kwargs,
+                                **kwargs
+            )
+
+    def _create(self, obj, slug=None, extra_data=None, key_generator_kwargs=None, **kwargs):
+        expiration_in_minutes = kwargs.pop('expiration_in_minutes', settings.DEFAULT_EXPIRATION)
+        key_generator_kwargs = {} if key_generator_kwargs is None else key_generator_kwargs
 
         token = self.model(
             content_type=ContentType.objects.get_for_model(obj.__class__),
@@ -93,8 +106,8 @@ class VerificationToken(models.Model):
     @property
     def is_valid(self):
         return (
-            self.is_active and self.key and self.expiration_in_minutes and
-            timezone.now() <= self.created_at + timedelta(minutes=self.expiration_in_minutes)
+            self.is_active and self.key and (self.expiration_in_minutes is None or timezone.now() <=
+                                             self.created_at + timedelta(minutes=self.expiration_in_minutes))
         )
 
     def check_key(self, key):
