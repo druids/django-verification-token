@@ -1,14 +1,11 @@
 import json
-import string
-
 from datetime import timedelta
 
-from django.db import models
-from django.db.utils import IntegrityError
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
+from django.db.utils import IntegrityError
 from django.utils import timezone
-from django.utils.crypto import get_random_string
 from django.utils.module_loading import import_string
 
 from .config import settings
@@ -59,13 +56,14 @@ class VerificationTokenManager(models.Manager):
                 return True
         return False
 
-    def filter_active_tokens(self, obj, slug=None, key=None):
+    def filter_active_tokens(self, obj_or_class, slug=None, key=None):
         qs = self.filter(
             is_active=True,
             slug=slug,
-            content_type=ContentType.objects.get_for_model(obj.__class__),
-            object_id=obj.pk
+            content_type=ContentType.objects.get_for_model(obj_or_class),
         )
+        if isinstance(obj_or_class, models.Model):
+            qs = qs.filter(object_id=obj_or_class.pk)
         return qs.filter(key=key) if key else qs
 
 
