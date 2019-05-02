@@ -1,19 +1,18 @@
 from datetime import timedelta
 
+from django.contrib.auth.models import Group, User
 from django.db.utils import IntegrityError
-from django.utils import timezone
 from django.test import override_settings
-
-from germanium.annotations import data_provider
-from germanium.test_cases.default import GermaniumTestCase
-from germanium.tools import assert_equal, assert_true, assert_false, assert_raises
+from django.utils import timezone
 
 from freezegun import freeze_time
-
+from germanium.annotations import data_provider
+from germanium.test_cases.default import GermaniumTestCase
+from germanium.tools import (assert_equal, assert_false, assert_raises,
+                             assert_true)
 from verification_token.models import VerificationToken
 
 from .base import BaseTestCaseMixin
-
 
 __all__ = (
     'TokenTestCase',
@@ -37,10 +36,12 @@ def generator_with_counter(counter):
     counter.add()
     return 'not_unique'
 
+
 def assert_token_is_same_active_and_valid(original_token, token_to_compare):
     assert_equal(original_token, token_to_compare)
     assert_true(token_to_compare.is_valid)
     assert_true(token_to_compare.is_active)
+
 
 class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
 
@@ -168,7 +169,7 @@ class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
     @data_provider('create_user')
     def test_verification_token_get_active_or_create_should_return_existing_active_and_valid_token(self, user):
         created_token = VerificationToken.objects.deactivate_and_create(user, expiration_in_minutes=10)
-        
+
         with freeze_time(timezone.now(), tick=True):
             obtained_token = VerificationToken.objects.get_active_or_create(user)
             assert_token_is_same_active_and_valid(created_token, obtained_token)
@@ -176,3 +177,25 @@ class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
         with freeze_time(timezone.now() + timedelta(minutes=5), tick=True):
             obtained_token = VerificationToken.objects.get_active_or_create(user)
             assert_token_is_same_active_and_valid(created_token, obtained_token)
+
+    @data_provider('create_user')
+    def test_verification_token_should_be_found_by_model_class_or_instance(self, user):
+        # 2 users of the same content type with tokens created
+        user2 = User.objects._create_user('user2', 'user2@test.cz', 'test2')
+        token = VerificationToken.objects.deactivate_and_create(user)
+        VerificationToken.objects.deactivate_and_create(user2, deactivate_old_tokens=False)
+
+        # another content type object with token created
+        group = Group.objects.create(name='authorized_group')
+        token_from_group = VerificationToken.objects.deactivate_and_create(group, deactivate_old_tokens=False)
+
+        tokens_by_class = VerificationToken.objects.filter_active_tokens(User)
+        assert_equal(tokens_by_class.count(), 2)
+
+        tokens_by_object = VerificationToken.objects.filter_active_tokens(user)
+        assert_equal(tokens_by_object.count(), 1)
+        assert_token_is_same_active_and_valid(tokens_by_object.first(), token)
+
+        tokens_by_object = VerificationToken.objects.filter_active_tokens(Group)
+        assert_equal(tokens_by_object.count(), 1)
+        assert_token_is_same_active_and_valid(tokens_by_object.first(), token_from_group)
