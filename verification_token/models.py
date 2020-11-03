@@ -74,7 +74,7 @@ class VerificationToken(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True, null=False, blank=False)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.TextField()
+    object_id = models.TextField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     key = models.CharField(null=False, blank=False, max_length=100, unique=True)
     expiration_in_minutes = models.PositiveIntegerField(null=True, blank=True, default=None)
