@@ -9,7 +9,7 @@ from freezegun import freeze_time
 from germanium.annotations import data_provider
 from germanium.test_cases.default import GermaniumTestCase
 from germanium.tools import (assert_equal, assert_false, assert_raises,
-                             assert_true)
+                             assert_true, assert_is_none)
 from verification_token.models import VerificationToken
 
 from .base import BaseTestCaseMixin
@@ -152,12 +152,12 @@ class TokenTestCase(BaseTestCaseMixin, GermaniumTestCase):
 
         token.extra_data = None
         token.save()
-        assert_equal(token.get_extra_data(), None)
+        assert_is_none(token.get_extra_data())
 
     @data_provider('create_user')
     def test_verification_token_expiration_should_be_nullable(self, user):
         token = VerificationToken.objects.deactivate_and_create(user, expiration_in_minutes=None)
-        assert_equal(token.expiration_in_minutes, None)
+        assert_is_none(token.expires_at)
 
     @data_provider('create_user')
     def test_verification_token_does_not_expire_without_expiration_value(self, user):
