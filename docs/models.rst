@@ -27,9 +27,9 @@ Models
 
     Verification token value.
 
-  .. attribute:: expiration_in_minutes
+  .. attribute:: expires_at
 
-    Token expiration in minutes.
+    ``DateTimeField``, contains date and time of token expiration or None (for a token that never expires).
 
   .. attribute:: slug
 

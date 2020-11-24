@@ -52,7 +52,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'django-verification-token'
 copyright = u'2018, Luboš Mátl'
-author = u'Luboš Mátl'
+author = u'Luboš Mátl and contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

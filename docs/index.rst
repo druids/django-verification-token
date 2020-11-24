@@ -19,4 +19,5 @@ Content
    :maxdepth: 2
 
    installation
+   commands
    models

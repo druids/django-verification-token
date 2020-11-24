@@ -41,7 +41,7 @@ class VerificationTokenManager(models.Manager):
             content_type=ContentType.objects.get_for_model(obj.__class__),
             object_id=obj.pk,
             slug=slug,
-            expiration_in_minutes=expiration_in_minutes,
+            expires_at=(timezone.now() + timedelta(minutes=expiration_in_minutes)) if expiration_in_minutes else None,
             key=self.model.generate_key(**key_generator_kwargs),
         )
         if extra_data:
@@ -77,7 +77,7 @@ class VerificationToken(models.Model):
     object_id = models.TextField(db_index=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     key = models.CharField(null=False, blank=False, max_length=100, unique=True)
-    expiration_in_minutes = models.PositiveIntegerField(null=True, blank=True, default=None)
+    expires_at = models.DateTimeField(null=True, blank=True, default=None)
     slug = models.SlugField(null=True, blank=True)
     is_active = models.BooleanField(null=False, blank=False, default=True)
     extra_data = models.TextField(null=True, blank=True)
@@ -104,8 +104,7 @@ class VerificationToken(models.Model):
     @property
     def is_valid(self):
         return (
-            self.is_active and self.key and (self.expiration_in_minutes is None or timezone.now() <=
-                                             self.created_at + timedelta(minutes=self.expiration_in_minutes))
+            self.is_active and self.key and (self.expires_at is None or timezone.now() <= self.expires_at)
         )
 
     def check_key(self, key):
