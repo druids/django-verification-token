@@ -4,13 +4,13 @@ from verification_token.version import get_version
 
 
 setup(
-    name='django-verification-token',
+    name='skip-django-verification-token',
     version=get_version(),
     description="Django library for generation verification toekens.",
     keywords='django, verification token',
     author='Lubos Matl',
     author_email='matllubos@gmail.com',
-    url='https://github.com/druids/django-verification-token',
+    url='https://github.com/skip-pay/django-verification-token',
     license='BSD',
     package_dir={'verification_token': 'verification_token'},
     include_package_data=True,

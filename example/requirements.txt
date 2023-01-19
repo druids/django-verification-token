@@ -1,6 +1,6 @@
 Django==2.0
-django-germanium==2.0.5
-coverage==4.5.1
+skip-django-germanium==2.3.6.1
+coveralls
 selenium==3.11.0
 six==1.11.0
 freezegun==0.3.10

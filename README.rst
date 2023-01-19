@@ -8,7 +8,7 @@ Installation
 
 .. code:: bash
 
-    pip install django-verification-token
+    pip install skip-django-verification-token
 
 
 Docs
